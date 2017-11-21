@@ -34,8 +34,10 @@ Configuration Options
 =====================
 
 
-===========    =============   ====   ======
-Option name    Default Value   Type   Description
-===========    =============   ====   ======
-enabled        True            bool   Enable the AWS collector
-===========    =============   ====   ======
+=============    =============   ====   ======
+Option name      Default Value   Type   Description
+=============    =============   ====   ======
+enabled          True            bool   Enable the AWS collector
+interval         15              int    Run frequency, in minutes
+max_instances    1000            int    Maximum number of instances per API call
+=============    =============   ====   ======
