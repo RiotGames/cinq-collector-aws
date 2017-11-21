@@ -8,12 +8,11 @@ The base AWS collector queries all regions for every account collecting informat
 Account
 =======
 
-* S3 Buckets for the account
-* CloudFront Distributions for the account
-* Route53 DNS Zones and their records for the account
-* DNS zones hosted in Route53
-* All resource records for a specific Route53 zone
-* Tags for the zone (returned as a dict)
+Update the list of resources that are account wide
+
+* S3 Buckets
+* CloudFront Distributions
+* Route53 DNS Zones and records
 
 =======
 Region
@@ -29,3 +28,8 @@ Update the list of the following resources for a specific account and region
 
 Please check out the `README <https://github.com/RiotGames/cloud-inquisitor/blob/master/docs/backend/README.rst>`_ 
 for further details on the how ``cinq-collector-aws`` works with further details on ``Cloud Inquisitor`` backend is built and what technologies we use.
+
+=====================
+Configuration Options
+=====================
+
