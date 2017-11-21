@@ -33,3 +33,9 @@ for further details on the how ``cinq-collector-aws`` works with further details
 Configuration Options
 =====================
 
+
+===========    =============   ====   ======
+Option name    Default Value   Type   Description
+===========    =============   ====   ======
+enabled        True            bool   Enable the AWS collector
+===========    =============   ====   ======
