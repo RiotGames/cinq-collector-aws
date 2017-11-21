@@ -25,5 +25,6 @@ Region
 * Update list of EBS Snapshots for the account / region
 * Update list of Elastic BeanStalks for the account / region
 
+
 Please check out the `README <https://github.com/RiotGames/cloud-inquisitor/blob/master/docs/backend/README.rst>`_ 
 for the further details on the how ``cinq-collector-aws`` works with further detauks on ``Cloud Inquisitor`` backend is built and what technologies we use.
