@@ -19,11 +19,13 @@ Account
 Region
 =======
 
-* Update list of EC2 Instances for the account / region
-* Update list of AMIs for the account / region
-* Update list of EBS Volumes for the account / region
-* Update list of EBS Snapshots for the account / region
-* Update list of Elastic BeanStalks for the account / region
+Update the list of the following resources for a specific account and region
+
+* EC2 Instances
+* AMIs
+* EBS Volumes
+* EBS Snapshots
+* Elastic BeanStalks
 
 Please check out the `README <https://github.com/RiotGames/cloud-inquisitor/blob/master/docs/backend/README.rst>`_ 
 for further details on the how ``cinq-collector-aws`` works with further details on ``Cloud Inquisitor`` backend is built and what technologies we use.
