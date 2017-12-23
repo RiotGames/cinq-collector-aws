@@ -3,7 +3,7 @@ from datetime import datetime
 from cloud_inquisitor import db, get_aws_session
 from cloud_inquisitor.config import dbconfig, ConfigOption
 from cloud_inquisitor.plugins import BaseCollector, CollectorType
-from cloud_inquisitor.plugins.types.resources import EC2Instance, EBSVolume, EBSSnapshot, AMI, BeanStalk
+from cloud_inquisitor.plugins.types.resources import EC2Instance, EBSVolume, EBSSnapshot, AMI, BeanStalk, VPC
 from cloud_inquisitor.schema.base import Account
 from cloud_inquisitor.utils import to_utc_date, isoformat, parse_date
 from cloud_inquisitor.wrappers import retry
@@ -38,6 +38,7 @@ class AWSRegionCollector(BaseCollector):
             self.update_snapshots()
             self.update_amis()
             self.update_beanstalks()
+            self.update_vpcs()
         except Exception as ex:
             self.log.exception(ex)
             raise
@@ -410,3 +411,72 @@ class AWSRegionCollector(BaseCollector):
             return beanstalks
         finally:
             del ebclient
+
+    @retry
+    def update_vpcs(self):
+        """Update list of VPCs for the account / region
+
+        Returns:
+            `None`
+        """
+        self.log.debug('Updating VPC List for {}/{}'.format(
+            self.account.account_name,
+            self.region
+        ))
+
+        existing_vpcs = VPC.get_all(self.account, self.region)
+        try:
+            self.log.debug('Processing collection for VPCs in account {} and region {}'.format(
+                self.account.account_name,
+                self.region
+                ))
+            ec2 = self.session.resource('ec2', region_name=self.region)
+            ec2_client = self.session.client('ec2', region_name=self.region)
+            vpcs = {x.id: x for x in ec2.vpcs.all()}
+
+            for data in vpcs.values():
+                flow_logs = ec2_client.describe_flow_logs(
+                    Filters=[{'Name': 'resource-id', 'Values': [data.vpc_id]}])['FlowLogs']
+                tags = {t['Key']: t['Value'] for t in data.tags or {}}
+                properties = {
+                    'vpc_id': data.vpc_id,
+                    'cidr_v4': data.cidr_block,
+                    'state': data.state,
+                    'vpc_flow_logs_status': flow_logs[0]['FlowLogStatus'] if flow_logs else None,
+                    'vpc_flow_logs_log_group': flow_logs[0]['LogGroupName'] if flow_logs else None,
+                    'tags': tags
+                }
+                if data.id in existing_vpcs:
+                    vpc = existing_vpcs[data.vpc_id]
+                    if vpc.update(data, properties):
+                        self.log.debug('Change detected for VPC {}/{}/{} '.format(data.vpc_id, self.region, properties))
+                else:
+                    self.log.debug('Trying to store VPC with {}/{}/{} '.format(data.vpc_id, self.region, properties))
+                    VPC.create(
+                        data.id,
+                        account_id=self.account.account_id,
+                        location=self.region,
+                        properties=properties,
+                        tags=tags
+                        )
+            db.session.commit()
+
+            # Removal of VPCs
+            vk = set(vpcs.keys())
+            evk = set(existing_vpcs.keys())
+
+            for resource_id in evk - vk:
+                db.session.delete(existing_vpcs[resource_id].resource)
+                self.log.debug('Removed VPCs {}/{}/{}'.format(
+                    self.account.account_name,
+                    self.region,
+                    resource_id
+                ))
+            db.session.commit()
+
+        except Exception as e:
+            self.log.exception('There was a problem during VPC collection for {}/{} , error follows: {}'.format(
+                self.account.account_name,
+                self.region,
+                e))
+            db.session.rollback()
