@@ -29,7 +29,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     setup_requires=['setuptools_scm'],
     install_requires=[
-        'cloud_inquisitor>=1.0.0',
+        'cloud_inquisitor>=1.0.2',
         'boto3>=1.4.4',
         'botocore>=1.5.52',
         'python-dateutil>=2.6.0',
