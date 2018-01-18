@@ -29,6 +29,7 @@ Update the list of the following resources for a specific account and region
 * EBS Volumes
 * EBS Snapshots
 * Elastic BeanStalks
+* VPCs
 
 =====================
 Configuration Options
