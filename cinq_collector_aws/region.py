@@ -61,7 +61,7 @@ class AWSRegionCollector(BaseCollector):
             api_instances = {x.id: x for x in ec2.instances.all()}
 
             try:
-                for instance_id,  data in api_instances.items():
+                for instance_id, data in api_instances.items():
                     if data.instance_id in existing_instances:
                         instance = existing_instances[instance_id]
 
