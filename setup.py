@@ -10,7 +10,7 @@ with open(os.path.join(path, 'README.rst')) as fd:
 
 setuptools.setup(
     name='cinq-collector-aws',
-    use_scm_version=True,
+    version='1.0.1',
 
     entry_points={
         'cloud_inquisitor.plugins.collectors': [
@@ -23,13 +23,15 @@ setuptools.setup(
             'view_ec2_instance_age = cinq_collector_aws.views.instances:EC2InstanceAge',
             'view_ebs_volume_list = cinq_collector_aws.views.ebs_volumes:EBSVolumeList',
             'view_ebs_volume_get = cinq_collector_aws.views.ebs_volumes:EBSVolumeGet',
+            'view_vpc_list = cinq_collector_aws.views.vpcs:VPCList',
+            'view_vpc_get = cinq_collector_aws.views.vpcs:VPCGet'
         ]
     },
 
     packages=setuptools.find_packages(),
     setup_requires=['setuptools_scm'],
     install_requires=[
-        'cloud_inquisitor>=1.0.0',
+        'cloud_inquisitor>=1.0.2',
         'boto3>=1.4.4',
         'botocore>=1.5.52',
         'python-dateutil>=2.6.0',
