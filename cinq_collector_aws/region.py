@@ -442,8 +442,8 @@ class AWSRegionCollector(BaseCollector):
                     'vpc_id': data.vpc_id,
                     'cidr_v4': data.cidr_block,
                     'state': data.state,
-                    'vpc_flow_logs_status': flow_logs[0]['FlowLogStatus'] if flow_logs else None,
-                    'vpc_flow_logs_log_group': flow_logs[0]['LogGroupName'] if flow_logs else None,
+                    'vpc_flow_logs_status': flow_logs[0]['FlowLogStatus'] if flow_logs else 'UNDEFINED',
+                    'vpc_flow_logs_log_group': flow_logs[0]['LogGroupName'] if flow_logs else 'UNDEFINED',
                     'tags': tags
                 }
                 if data.id in existing_vpcs:
