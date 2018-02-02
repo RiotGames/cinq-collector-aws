@@ -406,7 +406,7 @@ class AWSAccountCollector(BaseCollector):
                                 'name': record['Name'],
                                 'type': 'ALIAS',
                                 'ttl': 0,
-                                'value': value
+                                'value': [value]
                             }
                         else:
                             value = [y['Value'] for y in record['ResourceRecords']]
