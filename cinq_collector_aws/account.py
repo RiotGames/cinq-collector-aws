@@ -113,10 +113,10 @@ class AWSAccountCollector(BaseCollector):
             existing_dists = CloudFrontDist.get_all(self.account, None)
             dists = []
 
-            # region Fetch information from API
+            #region Fetch information from API
+            #region Web distributions
             done = False
             marker = None
-
             while not done:
                 if marker:
                     response = cfr.list_distributions(Marker=marker)
@@ -130,21 +130,36 @@ class AWSAccountCollector(BaseCollector):
                     done = True
 
                 if 'Items' in dl:
-                    dists += [
-                        {
-                            'arn': x['ARN'],
-                            'name': x['DomainName'],
-                            'origins': [y['DomainName'] for y in x['Origins']['Items']],
-                            'enabled': x['Enabled'],
-                            'type': 'web',
-                            'tags': {
-                                t['Key']: t['Value'] for t in cfr.list_tags_for_resource(
-                                    Resource=x['ARN']
-                                )['Tags']['Items']
-                            }
-                        } for x in dl['Items']
-                    ]
+                    for dist in dl['Items']:
+                        origins = []
+                        for origin in dist['Origins']['Items']:
+                            if 'S3OriginConfig' in origin:
+                                origins.append(
+                                    {
+                                        'type': 's3',
+                                        'source': origin['DomainName']
+                                    }
+                                )
+                            elif 'CustomOriginConfig' in origin:
+                                origins.append(
+                                    {
+                                        'type': 'custom-http',
+                                        'source': origin['DomainName']
+                                    }
+                                )
 
+                        data = {
+                            'arn': dist['ARN'],
+                            'name': dist['DomainName'],
+                            'origins': origins,
+                            'enabled': dist['Enabled'],
+                            'type': 'web',
+                            'tags': self.__get_distribution_tags(cfr, dist['ARN'])
+                        }
+                        dists.append(data)
+            #endregion
+
+            #region Streaming distributions
             done = False
             marker = None
             while not done:
@@ -164,16 +179,13 @@ class AWSAccountCollector(BaseCollector):
                         {
                             'arn': x['ARN'],
                             'name': x['DomainName'],
-                            'origins': [x['S3Origin']['DomainName']],
+                            'origins': [{'type': 's3', 'source': x['S3Origin']['DomainName']}],
                             'enabled': x['Enabled'],
                             'type': 'rtmp',
-                            'tags': {
-                                t['Key']: t['Value'] for t in cfr.list_tags_for_resource(
-                                    Resource=x['ARN']
-                                )['Tags']['Items']
-                            }
+                            'tags': self.__get_distribution_tags(cfr, x['ARN'])
                         } for x in dl['Items']
                     ]
+            #endregion
             # endregion
 
             for data in dists:
@@ -321,7 +333,24 @@ class AWSAccountCollector(BaseCollector):
             raise
         # endregion
 
-    # region Route 53 helper functions
+    # region Helper functions
+    @retry
+    def __get_distribution_tags(self, client, arn):
+        """Returns a dict containing the tags for a CloudFront distribution
+
+        Args:
+            client (botocore.client.CloudFront): Boto3 CloudFront client object
+            arn (str): ARN of the distribution to get tags for
+
+        Returns:
+            `dict`
+        """
+        return {
+            t['Key']: t['Value'] for t in client.list_tags_for_resource(
+                Resource=arn
+            )['Tags']['Items']
+        }
+
     @retry
     def __fetch_route53_zones(self):
         """Return a list of all DNS zones hosted in Route53
