@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from cloud_inquisitor import db, get_aws_session
+from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig, ConfigOption
+from cloud_inquisitor.database import db
 from cloud_inquisitor.plugins import BaseCollector, CollectorType
 from cloud_inquisitor.plugins.types.resources import EC2Instance, EBSVolume, EBSSnapshot, AMI, BeanStalk, VPC
 from cloud_inquisitor.schema.base import Account
@@ -419,24 +420,27 @@ class AWSRegionCollector(BaseCollector):
         Returns:
             `None`
         """
-        self.log.debug('Updating VPC List for {}/{}'.format(
+        self.log.debug('Updating VPCs for {}/{}'.format(
             self.account.account_name,
             self.region
         ))
 
         existing_vpcs = VPC.get_all(self.account, self.region)
         try:
-            self.log.debug('Processing collection for VPCs in account {} and region {}'.format(
-                self.account.account_name,
-                self.region
-                ))
             ec2 = self.session.resource('ec2', region_name=self.region)
             ec2_client = self.session.client('ec2', region_name=self.region)
             vpcs = {x.id: x for x in ec2.vpcs.all()}
 
             for data in vpcs.values():
                 flow_logs = ec2_client.describe_flow_logs(
-                    Filters=[{'Name': 'resource-id', 'Values': [data.vpc_id]}])['FlowLogs']
+                    Filters=[
+                        {
+                            'Name': 'resource-id',
+                            'Values': [data.vpc_id]
+                        }
+                    ]
+                ).get('FlowLogs')
+
                 tags = {t['Key']: t['Value'] for t in data.tags or {}}
                 properties = {
                     'vpc_id': data.vpc_id,
@@ -451,7 +455,6 @@ class AWSRegionCollector(BaseCollector):
                     if vpc.update(data, properties):
                         self.log.debug('Change detected for VPC {}/{}/{} '.format(data.vpc_id, self.region, properties))
                 else:
-                    self.log.debug('Trying to store VPC with {}/{}/{} '.format(data.vpc_id, self.region, properties))
                     VPC.create(
                         data.id,
                         account_id=self.account.account_id,
@@ -474,9 +477,9 @@ class AWSRegionCollector(BaseCollector):
                 ))
             db.session.commit()
 
-        except Exception as e:
-            self.log.exception('There was a problem during VPC collection for {}/{} , error follows: {}'.format(
+        except Exception:
+            self.log.exception('There was a problem during VPC collection for {}/{}'.format(
                 self.account.account_name,
-                self.region,
-                e))
+                self.region
+            ))
             db.session.rollback()
