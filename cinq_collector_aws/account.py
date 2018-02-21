@@ -1,13 +1,14 @@
-from botocore.exceptions import ClientError
+from collections import defaultdict
 
-from cloud_inquisitor import db, get_aws_session
+from botocore.exceptions import ClientError
+from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig
+from cloud_inquisitor.database import db
 from cloud_inquisitor.plugins import BaseCollector, CollectorType
 from cloud_inquisitor.plugins.types.resources import S3Bucket, CloudFrontDist, DNSZone, DNSRecord
 from cloud_inquisitor.schema.base import Account
 from cloud_inquisitor.utils import get_resource_id
 from cloud_inquisitor.wrappers import retry
-from collections import defaultdict
 
 
 class AWSAccountCollector(BaseCollector):
