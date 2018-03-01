@@ -15,7 +15,6 @@ class AWSAccountCollector(BaseCollector):
     name = 'EC2 Account Collector'
     ns = 'collector_ec2'
     type = CollectorType.AWS_ACCOUNT
-    enabled = dbconfig.get('enabled', ns, True)
     interval = dbconfig.get('interval', ns, 15)
 
     def __init__(self, account):
