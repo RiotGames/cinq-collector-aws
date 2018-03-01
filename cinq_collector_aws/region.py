@@ -14,7 +14,6 @@ class AWSRegionCollector(BaseCollector):
     name = 'EC2 Region Collector'
     ns = 'collector_ec2'
     type = CollectorType.AWS_REGION
-    enabled = dbconfig.get('enabled', ns, True)
     interval = dbconfig.get('interval', ns, 15)
     options = (
         ConfigOption('enabled', True, 'bool', 'Enable the AWS Region-based Collector'),
