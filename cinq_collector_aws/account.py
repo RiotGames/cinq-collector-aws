@@ -57,7 +57,7 @@ class AWSAccountCollector(BaseCollector):
                     if bucket.update(data):
                         self.log.debug('Change detected for S3Bucket {}/{}'.format(
                             self.account.account_name,
-                            bucket.name
+                            bucket.id
                         ))
                         bucket.save()
                 else:
