@@ -351,18 +351,26 @@ class AWSRegionCollector(BaseCollector):
             beanstalks = {}
             # region Fetch elastic beanstalks
             for env in ebclient.describe_environments()['Environments']:
-                if 'CNAME' in env:
-                    beanstalks[env['EnvironmentId']] = {
-                        'id': env['EnvironmentId'],
-                        'environment_name': env['EnvironmentName'],
-                        'application_name': env['ApplicationName'],
-                        'cname': env['CNAME']
-                    }
+                # Only get information for HTTP (non-worker) Beanstalks
+                if env['Tier']['Type'] == 'Standard':
+                    if 'CNAME' in env:
+                        beanstalks[env['EnvironmentId']] = {
+                            'id': env['EnvironmentId'],
+                            'environment_name': env['EnvironmentName'],
+                            'application_name': env['ApplicationName'],
+                            'cname': env['CNAME']
+                        }
+                    else:
+                        self.log.warning('Found a BeanStalk that does not have a CNAME: {} in {}/{}'.format(
+                            env['EnvironmentName'],
+                            self.account,
+                            self.region
+                        ))
                 else:
-                    self.log.warning('Found a BeanStalk that does not have a CNAME: {} in {}/{}'.format(
-                        env['EnvironmentName'],
-                        self.account,
-                        self.region
+                    self.log.debug('Skipping worker tier ElasticBeanstalk environment {}/{}/{}'.format(
+                        self.account.account_name,
+                        self.region,
+                        env['EnvironmentName']
                     ))
             # endregion
 
