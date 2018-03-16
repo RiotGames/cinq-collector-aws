@@ -377,7 +377,7 @@ class AWSAccountCollector(BaseCollector):
 
                 for zone_data in response['HostedZones']:
                     zones[get_resource_id('r53z', zone_data['Id'])] = {
-                        'name': zone_data['Name'],
+                        'name': zone_data['Name'].rstrip('.'),
                         'source': 'AWS/{}'.format(self.account),
                         'comment': zone_data['Config']['Comment'] if 'Comment' in zone_data['Config'] else None,
                         'zone_id': zone_data['Id'],
@@ -432,7 +432,7 @@ class AWSAccountCollector(BaseCollector):
                             value = record['AliasTarget']['DNSName']
                             records[record_id] = {
                                 'id': record_id,
-                                'name': record['Name'],
+                                'name': record['Name'].rstrip('.'),
                                 'type': 'ALIAS',
                                 'ttl': 0,
                                 'value': [value]
@@ -441,7 +441,7 @@ class AWSAccountCollector(BaseCollector):
                             value = [y['Value'] for y in record['ResourceRecords']]
                             records[record_id] = {
                                 'id': record_id,
-                                'name': record['Name'],
+                                'name': record['Name'].rstrip('.'),
                                 'type': record['Type'],
                                 'ttl': record['TTL'],
                                 'value': value
