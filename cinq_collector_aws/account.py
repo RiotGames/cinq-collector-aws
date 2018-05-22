@@ -486,17 +486,20 @@ class AWSAccountCollector(BaseCollector):
         Returns:
             `str`
         """
-        record = defaultdict(int, record)
+        record_data = defaultdict(int, record)
+        if type(record_data['GeoLocation']) == dict:
+            record_data['GeoLocation'] = ":".join(["{}={}".format(k, v) for k, v in record_data['GeoLocation'].items()])
+
         args = [
             zone_name,
-            record['Name'],
-            record['Type'],
-            record['Weight'],
-            record['Region'],
-            record['GeoLocation'],
-            record['Failover'],
-            record['HealthCheckId'],
-            record['TrafficPolicyInstanceId']
+            record_data['Name'],
+            record_data['Type'],
+            record_data['Weight'],
+            record_data['Region'],
+            record_data['GeoLocation'],
+            record_data['Failover'],
+            record_data['HealthCheckId'],
+            record_data['TrafficPolicyInstanceId']
         ]
 
         return get_resource_id('r53r', args)
