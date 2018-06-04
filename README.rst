@@ -2,11 +2,13 @@
 cinq-collector-aws
 ******************
 
-The base AWS collector queries all regions for every account collecting information for the following:
+Please open issues in the `Cloud-Inquisitor <https://github.com/RiotGames/cloud-inquisitor/issues/new?labels=cinq-collector-aws>`_ repository
 
 ===========
 Description
 ===========
+
+The base AWS collector queries all regions for every account collecting information for the following:
 
 ^^^^^^^
 Account
