@@ -45,7 +45,7 @@ class EBSVolumeList(BaseView):
             query['accounts'] = args['accounts']
 
         if args['regions']:
-            query['location'] = args['regions']
+            query['locations'] = args['regions']
 
         if args['state'] and len(args['state']) > 0:
             query['properties']['state'] = args['state']
