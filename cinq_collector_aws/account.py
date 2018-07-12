@@ -4,9 +4,10 @@ from botocore.exceptions import ClientError
 from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig
 from cloud_inquisitor.database import db
+from cloud_inquisitor.exceptions import InquisitorError
 from cloud_inquisitor.plugins import BaseCollector, CollectorType
+from cloud_inquisitor.plugins.types.accounts import AWSAccount
 from cloud_inquisitor.plugins.types.resources import S3Bucket, CloudFrontDist, DNSZone, DNSRecord
-from cloud_inquisitor.schema.base import Account
 from cloud_inquisitor.utils import get_resource_id
 from cloud_inquisitor.wrappers import retry
 
@@ -21,7 +22,12 @@ class AWSAccountCollector(BaseCollector):
         super().__init__()
 
         if type(account) == str:
-            account = Account.get(account)
+            account = AWSAccount.get(account)
+
+        if not isinstance(account, AWSAccount):
+            raise InquisitorError('The AWS Collector only supports AWS Accounts, got {}'.format(
+                account.__class__.__name__
+            ))
 
         self.account = account
         self.session = get_aws_session(self.account)
