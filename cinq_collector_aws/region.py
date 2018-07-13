@@ -3,9 +3,10 @@ from datetime import datetime
 from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig, ConfigOption
 from cloud_inquisitor.database import db
+from cloud_inquisitor.exceptions import InquisitorError
 from cloud_inquisitor.plugins import BaseCollector, CollectorType
+from cloud_inquisitor.plugins.types.accounts import AWSAccount
 from cloud_inquisitor.plugins.types.resources import EC2Instance, EBSVolume, EBSSnapshot, AMI, BeanStalk, VPC
-from cloud_inquisitor.schema.base import Account
 from cloud_inquisitor.utils import to_utc_date, isoformat, parse_date
 from cloud_inquisitor.wrappers import retry
 
@@ -25,7 +26,12 @@ class AWSRegionCollector(BaseCollector):
         super().__init__()
 
         if type(account) == str:
-            account = Account.get(account)
+            account = AWSAccount.get(account)
+
+        if not isinstance(account, AWSAccount):
+            raise InquisitorError('The AWS Collector only supports AWS Accounts, got {}'.format(
+                account.__class__.__name__
+            ))
 
         self.account = account
         self.region = region
