@@ -9,6 +9,7 @@ from cloud_inquisitor.plugins.types.accounts import AWSAccount
 from cloud_inquisitor.plugins.types.resources import EC2Instance, EBSVolume, EBSSnapshot, AMI, BeanStalk, VPC
 from cloud_inquisitor.utils import to_utc_date, isoformat, parse_date
 from cloud_inquisitor.wrappers import retry
+from cinq_collector_aws.resources import ELB
 
 
 class AWSRegionCollector(BaseCollector):
@@ -45,6 +46,7 @@ class AWSRegionCollector(BaseCollector):
             self.update_amis()
             self.update_beanstalks()
             self.update_vpcs()
+            self.update_elbs()
         except Exception as ex:
             self.log.exception(ex)
             raise
@@ -492,6 +494,117 @@ class AWSRegionCollector(BaseCollector):
 
         except Exception:
             self.log.exception('There was a problem during VPC collection for {}/{}'.format(
+                self.account.account_name,
+                self.region
+            ))
+            db.session.rollback()
+
+    @retry
+    def update_elbs(self):
+        """Update list of ELBs for the account / region
+
+        Returns:
+            `None`
+        """
+        self.log.debug('Updating ELBs for {}/{}'.format(
+            self.account.account_name,
+            self.region
+        ))
+
+        # ELBs known to CINQ
+        elbs_from_db = ELB.get_all(self.account, self.region)
+        try:
+
+            # ELBs known to AWS
+            elb_client = self.session.client('elb', region_name=self.region)
+            load_balancer_instances = elb_client.describe_load_balancers()['LoadBalancerDescriptions']
+            elbs_from_api = {}
+            for load_balancer in load_balancer_instances:
+                key = '{}::{}'.format(self.region, load_balancer['LoadBalancerName'])
+                elbs_from_api[key] = load_balancer
+
+            # Process ELBs known to AWS
+            for elb_identifier in elbs_from_api:
+                data = elbs_from_api[elb_identifier]
+                # ELB already in DB?
+                if elb_identifier in elbs_from_db:
+                    elb = elbs_from_db[elb_identifier]
+                    if elb.update(data):
+                        self.log.info(
+                            'Updating info for ELB {} in {}/{}'.format(
+                                elb.resource.resource_id,
+                                self.account.account_name,
+                                self.region
+                            )
+                        )
+                        db.session.add(elb.resource)
+                else:
+                    # Not previously seen this ELB, so add it
+                    if 'Tags' in data:
+                        try:
+                            tags = {tag['Key']: tag['Value'] for tag in data['Tags']}
+                        except AttributeError:
+                            tags = {}
+                    else:
+                        tags = {}
+                    properties = {
+                        'lb_name': data['LoadBalancerName'],
+                        'dns_name': data['DNSName'],
+                        'instances': ' '.join(
+                            [instance['InstanceId'] for instance in data['Instances']]
+                        ),
+                        'num_instances': len(
+                            [instance['InstanceId'] for instance in data['Instances']]
+                        ),
+                        'vpc_id': data['VPCId'],
+                        'state': 'not_reported',
+                    }
+                    if 'CanonicalHostedZoneName' in data:
+                        properties['canonical_hosted_zone_name'] = data['CanonicalHostedZoneName']
+                    else:
+                        properties['canonical_hosted_zone_name'] = None
+
+                    # LoadBalancerName doesn't have to be unique across all regions
+                    # Use region::LoadBalancerName as resource_id
+                    resource_id = '{}::{}'.format(self.region, data['LoadBalancerName'])
+
+                    # All done, create
+                    elb = ELB.create(
+                        resource_id,
+                        account_id=self.account.account_id,
+                        location=self.region,
+                        properties=properties,
+                        tags=tags
+                    )
+
+                    # elbs[elb.resource.resource_id] = elb
+                    self.log.info(
+                        'Added new EC2Instance {}/{}/{}'.format(
+                            self.account.account_name,
+                            self.region,
+                            elb.resource.resource_id
+                        )
+                    )
+
+            # Delete no longer existing ELBs
+            elb_keys_from_db = set(list(elbs_from_db.keys()))
+            self.log.debug('elb_keys_from_db =  %s', elb_keys_from_db)
+            elb_keys_from_api = set(list(elbs_from_api.keys()))
+            self.log.debug('elb_keys_from_api = %s', elb_keys_from_api)
+
+            for elb_identifier in elb_keys_from_db - elb_keys_from_api:
+                db.session.delete(elbs_from_db[elb_identifier].resource)
+                self.log.info('Deleted ELB {}/{}/{}'.format(
+                        self.account.account_name,
+                        self.region,
+                        elb_identifier
+                    )
+                )
+            db.session.commit()
+
+
+        except:
+            self.log.exception('There was a problem during ELB collection for {}/{}'.format(
                 self.account.account_name,
                 self.region
             ))
