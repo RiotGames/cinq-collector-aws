@@ -52,25 +52,78 @@ class AWSAccountCollector(BaseCollector):
         """
         self.log.debug('Updating S3Buckets for {}'.format(self.account.account_name))
         s3 = self.session.resource('s3')
+        s3c = self.session.client('s3')
 
         try:
             existing_buckets = S3Bucket.get_all(self.account)
             buckets = {bucket.name: bucket for bucket in s3.buckets.all()}
 
             for data in buckets.values():
+                bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
+
+                # This section ensures that we handle non-existent or non-accessible sub-resources
+                try:
+                    acl = data.Acl().grants
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'AccessDenied':
+                        acl = 'Unavailable'
+                    else:
+                        self.log.error('There was a problem collecting acl information for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                        acl = 'Unavailable'
+
+                try:
+                    lifecycle_rules = data.Lifecycle().rules
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+                        lifecycle_rules = None
+                    else:
+                        self.log.error('There was a problem collecting lifecycle rules for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                        lifecycle_rules = 'Unavailable'
+
+                try:
+                    bucket_policy = data.Policy().policy
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchBucketPolicy':
+                        bucket_policy = None
+                    else:
+                        self.log.error('There was a problem collecting bucket policy for bucket {} on account {}, {}'
+                                       .format(data.name, self.account, e.response))
+                        bucket_policy = 'Unavailable'
+
+                try:
+                    website_enabled = True if data.Website().index_document else False
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchWebsiteConfiguration':
+                        website_enabled = False
+                    else:
+                        self.log.error('There was a problem collecting website config for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                        website_enabled = 'Unavailable'
+
+                properties = {
+                    'acl': acl,
+                    'bucket_policy': bucket_policy,
+                    'creation_date': data.creation_date,
+                    'lifecycle_config': lifecycle_rules,
+                    'location': bucket_region,
+                    'website_enabled': website_enabled
+                }
+
                 if data.name in existing_buckets:
                     bucket = existing_buckets[data.name]
-                    if bucket.update(data):
+                    if bucket.update(data, properties):
                         self.log.debug('Change detected for S3Bucket {}/{}'.format(
                             self.account.account_name,
                             bucket.id
                         ))
                         bucket.save()
                 else:
-                    properties = {
-                        'creation_date': data.creation_date
-                    }
-
                     # If a bucket has no tags, a boto3 error is thrown. We treat this as an empty tag set
                     try:
                         tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
@@ -119,8 +172,8 @@ class AWSAccountCollector(BaseCollector):
             existing_dists = CloudFrontDist.get_all(self.account, None)
             dists = []
 
-            #region Fetch information from API
-            #region Web distributions
+            # region Fetch information from API
+            # region Web distributions
             done = False
             marker = None
             while not done:
@@ -163,9 +216,9 @@ class AWSAccountCollector(BaseCollector):
                             'tags': self.__get_distribution_tags(cfr, dist['ARN'])
                         }
                         dists.append(data)
-            #endregion
+            # endregion
 
-            #region Streaming distributions
+            # region Streaming distributions
             done = False
             marker = None
             while not done:
@@ -191,7 +244,7 @@ class AWSAccountCollector(BaseCollector):
                             'tags': self.__get_distribution_tags(cfr, x['ARN'])
                         } for x in dl['Items']
                     ]
-            #endregion
+            # endregion
             # endregion
 
             for data in dists:
@@ -353,8 +406,8 @@ class AWSAccountCollector(BaseCollector):
         """
         return {
             t['Key']: t['Value'] for t in client.list_tags_for_resource(
-                Resource=arn
-            )['Tags']['Items']
+            Resource=arn
+        )['Tags']['Items']
         }
 
     @retry
@@ -472,10 +525,10 @@ class AWSAccountCollector(BaseCollector):
         try:
             return {
                 tag['Key']: tag['Value'] for tag in
-                    route53.list_tags_for_resource(
-                        ResourceType='hostedzone',
-                        ResourceId=zone_id.split('/')[-1]
-                    )['ResourceTagSet']['Tags']
+                route53.list_tags_for_resource(
+                    ResourceType='hostedzone',
+                    ResourceId=zone_id.split('/')[-1]
+                )['ResourceTagSet']['Tags']
             }
         finally:
             del route53
