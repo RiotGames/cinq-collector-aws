@@ -579,7 +579,7 @@ class AWSRegionCollector(BaseCollector):
 
                     # elbs[elb.resource.resource_id] = elb
                     self.log.info(
-                        'Added new EC2Instance {}/{}/{}'.format(
+                        'Added new ELB {}/{}/{}'.format(
                             self.account.account_name,
                             self.region,
                             elb.resource.resource_id
