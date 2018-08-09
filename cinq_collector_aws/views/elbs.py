@@ -17,7 +17,7 @@ class ELBList(BaseView):
             'elb',
             args={
                 'page': 1,
-                'count': 20,
+                'count': 100,
                 'accounts': None,
                 'regions': None,
                 'num_instances': None
@@ -30,7 +30,7 @@ class ELBList(BaseView):
     @check_auth(ROLE_USER)
     def get(self):
         self.reqparse.add_argument('page', type=int, default=1)
-        self.reqparse.add_argument('count', type=int, default=20, choices=[10, 20, 50])
+        self.reqparse.add_argument('count', type=int, default=100, choices=[25, 50, 100])
         self.reqparse.add_argument('accounts', type=str, default=None, action='append')
         self.reqparse.add_argument('regions', type=str, default=None, action='append')
         self.reqparse.add_argument('numInstances', type=int, default=None)
