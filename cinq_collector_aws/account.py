@@ -66,13 +66,10 @@ class AWSAccountCollector(BaseCollector):
                     acl = data.Acl().grants
 
                 except ClientError as e:
-                    if e.response['Error']['Code'] == 'AccessDenied':
-                        acl = 'Unavailable'
-                    else:
+                    acl = 'Unavailable'
+                    if e.response['Error']['Code'] != 'AccessDenied':
                         self.log.error('There was a problem collecting acl information for bucket {} on account {}'
                                        .format(data.name, self.account))
-                        acl = 'Unavailable'
-
                 try:
                     lifecycle_rules = data.Lifecycle().rules
 
@@ -96,11 +93,11 @@ class AWSAccountCollector(BaseCollector):
                         bucket_policy = 'Unavailable'
 
                 try:
-                    website_enabled = True if data.Website().index_document else False
+                    website_enabled = 'Enabled' if data.Website().index_document else 'Disabled'
 
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchWebsiteConfiguration':
-                        website_enabled = False
+                        website_enabled = 'Disabled'
                     else:
                         self.log.error('There was a problem collecting website config for bucket {} on account {}'
                                        .format(data.name, self.account))
