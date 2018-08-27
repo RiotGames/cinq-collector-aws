@@ -20,6 +20,7 @@ class VPCList(BaseView):
                 'regions': None,
                 'vpcId': None,
                 'cidrV4': None,
+                'isDefault': None,
                 'vpcFlowLogsStatus': None
             },
             order=3
@@ -36,6 +37,7 @@ class VPCList(BaseView):
             self.reqparse.add_argument('regions', type=str, default=None, action='append')
             self.reqparse.add_argument('vpcId', type=str, default=None, action='append')
             self.reqparse.add_argument('cidrV4', type=str, default=None, action='append')
+            self.reqparse.add_argument('isDefault', type=str, default=None, action='append')
             self.reqparse.add_argument('vpcFlowLogsStatus', type=str, default=None, action='append')
 
             args = self.reqparse.parse_args()
@@ -55,6 +57,9 @@ class VPCList(BaseView):
 
             if args['cidrV4']:
                 query['properties']['cidr_v4'] = args['cidrV4']
+
+            if args['isDefault']:
+                query['properties']['is_default'] = args['isDefault']
 
             if args['vpcFlowLogsStatus']:
                 query['properties']['vpc_flow_logs_status'] = args['vpcFlowLogsStatus']
