@@ -150,10 +150,12 @@ class AWSAccountCollector(BaseCollector):
                         resource_id
                     ))
                 db.session.commit()
+
             except:
                 db.session.rollback()
+
         finally:
-            del s3
+            del s3, s3c
 
     @retry
     def update_cloudfront(self):
