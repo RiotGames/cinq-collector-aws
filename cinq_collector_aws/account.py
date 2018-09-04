@@ -103,13 +103,20 @@ class AWSAccountCollector(BaseCollector):
                                        .format(data.name, self.account))
                         website_enabled = 'Unavailable'
 
+                try:
+                    tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
+
+                except ClientError:
+                        tags = {}
+
                 properties = {
                     'acl': acl,
                     'bucket_policy': bucket_policy,
                     'creation_date': data.creation_date,
                     'lifecycle_config': lifecycle_rules,
                     'location': bucket_region,
-                    'website_enabled': website_enabled
+                    'website_enabled': website_enabled,
+                    'tags': tags
                 }
 
                 if data.name in existing_buckets:
@@ -122,10 +129,6 @@ class AWSAccountCollector(BaseCollector):
                         bucket.save()
                 else:
                     # If a bucket has no tags, a boto3 error is thrown. We treat this as an empty tag set
-                    try:
-                        tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
-                    except ClientError:
-                        tags = {}
 
                     S3Bucket.create(
                         data.name,
@@ -150,10 +153,12 @@ class AWSAccountCollector(BaseCollector):
                         resource_id
                     ))
                 db.session.commit()
+
             except:
                 db.session.rollback()
+
         finally:
-            del s3
+            del s3, s3c
 
     @retry
     def update_cloudfront(self):

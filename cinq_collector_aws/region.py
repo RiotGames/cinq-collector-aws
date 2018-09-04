@@ -460,6 +460,7 @@ class AWSRegionCollector(BaseCollector):
                 properties = {
                     'vpc_id': data.vpc_id,
                     'cidr_v4': data.cidr_block,
+                    'is_default': data.is_default,
                     'state': data.state,
                     'vpc_flow_logs_status': flow_logs[0]['FlowLogStatus'] if flow_logs else 'UNDEFINED',
                     'vpc_flow_logs_log_group': flow_logs[0]['LogGroupName'] if flow_logs else 'UNDEFINED',
