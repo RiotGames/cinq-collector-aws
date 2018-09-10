@@ -108,7 +108,7 @@ class AWSAccountCollector(BaseCollector):
                     tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
 
                 except ClientError:
-                        tags = {}
+                    tags = {}
 
                 try:
                     bucket_size = self._get_bucket_statistics(data.name, 'BucketSizeBytes', 'StandardStorage', 1)
@@ -617,7 +617,9 @@ class AWSAccountCollector(BaseCollector):
             return stat_value
 
         except Exception as e:
-            self.log.error('Could not get bucket statistic for account {} / bucket {} / {}'.format(self.account.account_name, bucket_name, e))
+            self.log.error(
+                'Could not get bucket statistic for account {} / bucket {} / {}'.format(self.account.account_name,
+                                                                                        bucket_name, e))
 
         finally:
             del cw
