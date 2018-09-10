@@ -112,7 +112,7 @@ class AWSAccountCollector(BaseCollector):
 
                 try:
                     bucket_size = self._get_bucket_statistics(data.name, 'BucketSizeBytes', 'StandardStorage', 1)
-                    bucket_obj_count = self._get_bucket_statistics(data.name, 'NumberofObjects', 'AllStorageTypes', 1)
+                    bucket_obj_count = self._get_bucket_statistics(data.name, 'NumberOfObjects', 'AllStorageTypes', 1)
 
                     metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
 
