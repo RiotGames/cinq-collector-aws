@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from botocore.exceptions import ClientError
+from datetime import datetime, timedelta
 from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig
 from cloud_inquisitor.database import db
@@ -109,6 +110,15 @@ class AWSAccountCollector(BaseCollector):
                 except ClientError:
                         tags = {}
 
+                try:
+                    bucket_size = self._get_bucket_statistics(data.name, 'BucketSizeBytes', 'StandardStorage', 1)
+                    bucket_obj_count = self._get_bucket_statistics(data.name, 'NumberofObjects', 'AllStorageTypes', 1)
+
+                    metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
+
+                except Exception as e:
+                    self.log.error('Could not retrieve bucket statistics / {}'.format(e))
+
                 properties = {
                     'acl': acl,
                     'bucket_policy': bucket_policy,
@@ -116,6 +126,7 @@ class AWSAccountCollector(BaseCollector):
                     'lifecycle_config': lifecycle_rules,
                     'location': bucket_region,
                     'website_enabled': website_enabled,
+                    'metrics': metrics,
                     'tags': tags
                 }
 
@@ -564,4 +575,51 @@ class AWSAccountCollector(BaseCollector):
         ]
 
         return get_resource_id('r53r', args)
+
+    @staticmethod
+    def _get_bucket_statistics(self, bucket_name, storage_type, statistic, days):
+        """ Returns datapoints from cloudwatch for bucket statistics.
+
+        Args:
+            bucket_name `(str)`: The name of the bucket
+            statistic `(str)`: The statistic you want to fetch from
+            days `(int)`: Sample period for the statistic
+
+        """
+
+        cw = self.session.client('cloudwatch')
+
+        # gather cw stats
+
+        try:
+            obj_stats = cw.get_metric_statistics(
+                Namespace='AWS/S3',
+                MetricName=statistic,
+                Dimensions=[
+                    {
+                        'Name': 'StorageType',
+                        'Value': storage_type
+                    },
+                    {
+                        'Name': 'BucketName',
+                        'Value': bucket_name
+                    }
+                ],
+                Period=86400,
+                StartTime=datetime.now() - timedelta(days=days),
+                EndTime=datetime.now(),
+                Statistics=[
+                    'Average'
+                ]
+            )
+            stat_value = obj_stats['Datapoints'][0]['Average']
+
+            return stat_value
+
+        except Exception as e:
+            self.log.error('Could not get bucket statistic for account {} / bucket {} / {}'.format(self.account.account_name, bucket_name, e))
+
+        finally:
+            del cw
+
     # endregion
