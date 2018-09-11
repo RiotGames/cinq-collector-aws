@@ -67,6 +67,7 @@ class AWSAccountCollector(BaseCollector):
                         bucket_region = 'us-east-1'
 
                 except ClientError as e:
+                    self.log.error('Could not get bucket location..bucket possibly removed / {}'.format(e))
                     bucket_region = 'unavailable'
 
                 try:
