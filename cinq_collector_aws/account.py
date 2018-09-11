@@ -61,6 +61,8 @@ class AWSAccountCollector(BaseCollector):
 
             for data in buckets.values():
                 bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
+                if not bucket_region:
+                    bucket_region = 'us-east-1'
 
                 # This section ensures that we handle non-existent or non-accessible sub-resources
                 try:
@@ -111,8 +113,10 @@ class AWSAccountCollector(BaseCollector):
                     tags = {}
 
                 try:
-                    bucket_size = self._get_bucket_statistics(data.name, 'BucketSizeBytes', 'StandardStorage', 1)
-                    bucket_obj_count = self._get_bucket_statistics(data.name, 'NumberOfObjects', 'AllStorageTypes', 1)
+                    bucket_size = self._get_bucket_statistics(self, data.name, bucket_region, 'BucketSizeBytes',
+                                                              'StandardStorage', 1)
+                    bucket_obj_count = self._get_bucket_statistics(self, data.name, bucket_region, 'NumberOfObjects',
+                                                                   'AllStorageTypes', 1)
 
                     metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
 
@@ -577,7 +581,7 @@ class AWSAccountCollector(BaseCollector):
         return get_resource_id('r53r', args)
 
     @staticmethod
-    def _get_bucket_statistics(self, bucket_name, storage_type, statistic, days):
+    def _get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
         """ Returns datapoints from cloudwatch for bucket statistics.
 
         Args:
@@ -587,7 +591,7 @@ class AWSAccountCollector(BaseCollector):
 
         """
 
-        cw = self.session.client('cloudwatch')
+        cw = self.session.client('cloudwatch', region_name=bucket_region)
 
         # gather cw stats
 
@@ -612,7 +616,7 @@ class AWSAccountCollector(BaseCollector):
                     'Average'
                 ]
             )
-            stat_value = obj_stats['Datapoints'][0]['Average']
+            stat_value = obj_stats['Datapoints'][0]['Average'] if obj_stats['Datapoints'] else 'NO_DATA'
 
             return stat_value
 
