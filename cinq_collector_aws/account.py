@@ -60,11 +60,16 @@ class AWSAccountCollector(BaseCollector):
             buckets = {bucket.name: bucket for bucket in s3.buckets.all()}
 
             for data in buckets.values():
-                bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
-                if not bucket_region:
-                    bucket_region = 'us-east-1'
-
                 # This section ensures that we handle non-existent or non-accessible sub-resources
+                try:
+                    bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
+                    if not bucket_region:
+                        bucket_region = 'us-east-1'
+
+                except ClientError as e:
+                    self.log.error('Could not get bucket location..bucket possibly removed / {}'.format(e))
+                    bucket_region = 'unavailable'
+
                 try:
                     acl = data.Acl().grants
 
