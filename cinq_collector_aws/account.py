@@ -60,11 +60,15 @@ class AWSAccountCollector(BaseCollector):
             buckets = {bucket.name: bucket for bucket in s3.buckets.all()}
 
             for data in buckets.values():
-                bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
-                if not bucket_region:
-                    bucket_region = 'us-east-1'
-
                 # This section ensures that we handle non-existent or non-accessible sub-resources
+                try:
+                    bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
+                    if not bucket_region:
+                        bucket_region = 'us-east-1'
+
+                except ClientError as e:
+                    bucket_region = 'unavailable'
+
                 try:
                     acl = data.Acl().grants
 
@@ -107,7 +111,7 @@ class AWSAccountCollector(BaseCollector):
                         website_enabled = 'Unavailable'
 
                 try:
-                    tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
+                    tags = {tag['Key']: tag['Value'] for tag in data.tags or {}}
 
                 except ClientError:
                     tags = {}
