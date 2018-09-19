@@ -118,11 +118,11 @@ class AWSAccountCollector(BaseCollector):
                     tags = {}
 
                 try:
-                    bucket_size = self.get_bucket_statistics(self, data.name, bucket_region, 'StandardStorage',
-                                                             'BucketSizeBytes', 3)
+                    bucket_size = self._get_bucket_statistics(data.name, bucket_region, 'StandardStorage',
+                                                              'BucketSizeBytes', 3)
 
-                    bucket_obj_count = self.get_bucket_statistics(self, data.name, bucket_region, 'AllStorageTypes',
-                                                                  'NumberOfObjects', 3)
+                    bucket_obj_count = self._get_bucket_statistics(data.name, bucket_region, 'AllStorageTypes',
+                                                                   'NumberOfObjects', 3)
 
                     metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
 
@@ -586,7 +586,8 @@ class AWSAccountCollector(BaseCollector):
 
         return get_resource_id('r53r', args)
 
-    def get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
+    @staticmethod
+    def _get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
         """ Returns datapoints from cloudwatch for bucket statistics.
 
         Args:
