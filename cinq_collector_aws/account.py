@@ -118,10 +118,11 @@ class AWSAccountCollector(BaseCollector):
                     tags = {}
 
                 try:
-                    bucket_size = self._get_bucket_statistics(self, data.name, bucket_region, 'BucketSizeBytes',
-                                                              'StandardStorage', 1)
-                    bucket_obj_count = self._get_bucket_statistics(self, data.name, bucket_region, 'NumberOfObjects',
-                                                                   'AllStorageTypes', 1)
+                    bucket_size = self.get_bucket_statistics(self, data.name, bucket_region, 'StandardStorage',
+                                                             'BucketSizeBytes', 3)
+
+                    bucket_obj_count = self.get_bucket_statistics(self, data.name, bucket_region, 'AllStorageTypes',
+                                                                  'NumberOfObjects', 3)
 
                     metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
 
@@ -585,14 +586,13 @@ class AWSAccountCollector(BaseCollector):
 
         return get_resource_id('r53r', args)
 
-    @staticmethod
-    def _get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
+    def get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
         """ Returns datapoints from cloudwatch for bucket statistics.
 
         Args:
             bucket_name `(str)`: The name of the bucket
             statistic `(str)`: The statistic you want to fetch from
-            days `(int)`: Sample period for the statistic
+            hours `(int)`: Sample period for the statistic
 
         """
 
@@ -615,8 +615,8 @@ class AWSAccountCollector(BaseCollector):
                     }
                 ],
                 Period=86400,
-                StartTime=datetime.now() - timedelta(days=days),
-                EndTime=datetime.now(),
+                StartTime=datetime.utcnow() - timedelta(days=days),
+                EndTime=datetime.utcnow(),
                 Statistics=[
                     'Average'
                 ]
