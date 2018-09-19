@@ -592,7 +592,7 @@ class AWSAccountCollector(BaseCollector):
         Args:
             bucket_name `(str)`: The name of the bucket
             statistic `(str)`: The statistic you want to fetch from
-            hours `(int)`: Sample period for the statistic
+            days `(int)`: Sample period for the statistic
 
         """
 
