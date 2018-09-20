@@ -586,6 +586,7 @@ class AWSAccountCollector(BaseCollector):
 
         return get_resource_id('r53r', args)
 
+    @staticmethod
     def _get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
         """ Returns datapoints from cloudwatch for bucket statistics.
 
