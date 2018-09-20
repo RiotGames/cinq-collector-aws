@@ -128,6 +128,7 @@ class AWSAccountCollector(BaseCollector):
 
                 except Exception as e:
                     self.log.error('Could not retrieve bucket statistics / {}'.format(e))
+                    metrics = {}
 
                 properties = {
                     'acl': acl,
