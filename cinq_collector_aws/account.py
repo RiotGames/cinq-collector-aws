@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from botocore.exceptions import ClientError
+from datetime import datetime, timedelta
 from cloud_inquisitor import get_aws_session
 from cloud_inquisitor.config import dbconfig
 from cloud_inquisitor.database import db
@@ -52,30 +53,103 @@ class AWSAccountCollector(BaseCollector):
         """
         self.log.debug('Updating S3Buckets for {}'.format(self.account.account_name))
         s3 = self.session.resource('s3')
+        s3c = self.session.client('s3')
 
         try:
             existing_buckets = S3Bucket.get_all(self.account)
             buckets = {bucket.name: bucket for bucket in s3.buckets.all()}
 
             for data in buckets.values():
+                # This section ensures that we handle non-existent or non-accessible sub-resources
+                try:
+                    bucket_region = s3c.get_bucket_location(Bucket=data.name)['LocationConstraint']
+                    if not bucket_region:
+                        bucket_region = 'us-east-1'
+
+                except ClientError as e:
+                    self.log.error('Could not get bucket location..bucket possibly removed / {}'.format(e))
+                    bucket_region = 'unavailable'
+
+                try:
+                    acl = data.Acl().grants
+
+                except ClientError as e:
+                    acl = 'Unavailable'
+                    if e.response['Error']['Code'] != 'AccessDenied':
+                        self.log.error('There was a problem collecting acl information for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                try:
+                    lifecycle_rules = data.Lifecycle().rules
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+                        lifecycle_rules = None
+                    else:
+                        self.log.error('There was a problem collecting lifecycle rules for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                        lifecycle_rules = 'Unavailable'
+
+                try:
+                    bucket_policy = data.Policy().policy
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchBucketPolicy':
+                        bucket_policy = None
+                    else:
+                        self.log.error('There was a problem collecting bucket policy for bucket {} on account {}, {}'
+                                       .format(data.name, self.account, e.response))
+                        bucket_policy = 'Unavailable'
+
+                try:
+                    website_enabled = 'Enabled' if data.Website().index_document else 'Disabled'
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchWebsiteConfiguration':
+                        website_enabled = 'Disabled'
+                    else:
+                        self.log.error('There was a problem collecting website config for bucket {} on account {}'
+                                       .format(data.name, self.account))
+                        website_enabled = 'Unavailable'
+
+                try:
+                    tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
+
+                except ClientError:
+                    tags = {}
+
+                try:
+                    bucket_size = self._get_bucket_statistics(data.name, bucket_region, 'StandardStorage',
+                                                              'BucketSizeBytes', 3)
+
+                    bucket_obj_count = self._get_bucket_statistics(data.name, bucket_region, 'AllStorageTypes',
+                                                                   'NumberOfObjects', 3)
+
+                    metrics = {'size': bucket_size, 'object_count': bucket_obj_count}
+
+                except Exception as e:
+                    self.log.error('Could not retrieve bucket statistics / {}'.format(e))
+
+                properties = {
+                    'acl': acl,
+                    'bucket_policy': bucket_policy,
+                    'creation_date': data.creation_date,
+                    'lifecycle_config': lifecycle_rules,
+                    'location': bucket_region,
+                    'website_enabled': website_enabled,
+                    'metrics': metrics,
+                    'tags': tags
+                }
+
                 if data.name in existing_buckets:
                     bucket = existing_buckets[data.name]
-                    if bucket.update(data):
+                    if bucket.update(data, properties):
                         self.log.debug('Change detected for S3Bucket {}/{}'.format(
                             self.account.account_name,
                             bucket.id
                         ))
                         bucket.save()
                 else:
-                    properties = {
-                        'creation_date': data.creation_date
-                    }
-
                     # If a bucket has no tags, a boto3 error is thrown. We treat this as an empty tag set
-                    try:
-                        tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
-                    except ClientError:
-                        tags = {}
 
                     S3Bucket.create(
                         data.name,
@@ -100,10 +174,12 @@ class AWSAccountCollector(BaseCollector):
                         resource_id
                     ))
                 db.session.commit()
+
             except:
                 db.session.rollback()
+
         finally:
-            del s3
+            del s3, s3c
 
     @retry
     def update_cloudfront(self):
@@ -119,8 +195,8 @@ class AWSAccountCollector(BaseCollector):
             existing_dists = CloudFrontDist.get_all(self.account, None)
             dists = []
 
-            #region Fetch information from API
-            #region Web distributions
+            # region Fetch information from API
+            # region Web distributions
             done = False
             marker = None
             while not done:
@@ -163,9 +239,9 @@ class AWSAccountCollector(BaseCollector):
                             'tags': self.__get_distribution_tags(cfr, dist['ARN'])
                         }
                         dists.append(data)
-            #endregion
+            # endregion
 
-            #region Streaming distributions
+            # region Streaming distributions
             done = False
             marker = None
             while not done:
@@ -191,7 +267,7 @@ class AWSAccountCollector(BaseCollector):
                             'tags': self.__get_distribution_tags(cfr, x['ARN'])
                         } for x in dl['Items']
                     ]
-            #endregion
+            # endregion
             # endregion
 
             for data in dists:
@@ -353,8 +429,8 @@ class AWSAccountCollector(BaseCollector):
         """
         return {
             t['Key']: t['Value'] for t in client.list_tags_for_resource(
-                Resource=arn
-            )['Tags']['Items']
+            Resource=arn
+        )['Tags']['Items']
         }
 
     @retry
@@ -472,10 +548,10 @@ class AWSAccountCollector(BaseCollector):
         try:
             return {
                 tag['Key']: tag['Value'] for tag in
-                    route53.list_tags_for_resource(
-                        ResourceType='hostedzone',
-                        ResourceId=zone_id.split('/')[-1]
-                    )['ResourceTagSet']['Tags']
+                route53.list_tags_for_resource(
+                    ResourceType='hostedzone',
+                    ResourceId=zone_id.split('/')[-1]
+                )['ResourceTagSet']['Tags']
             }
         finally:
             del route53
@@ -509,4 +585,52 @@ class AWSAccountCollector(BaseCollector):
         ]
 
         return get_resource_id('r53r', args)
+
+    def _get_bucket_statistics(self, bucket_name, bucket_region, storage_type, statistic, days):
+        """ Returns datapoints from cloudwatch for bucket statistics.
+
+        Args:
+            bucket_name `(str)`: The name of the bucket
+            statistic `(str)`: The statistic you want to fetch from
+            days `(int)`: Sample period for the statistic
+
+        """
+
+        cw = self.session.client('cloudwatch', region_name=bucket_region)
+
+        # gather cw stats
+
+        try:
+            obj_stats = cw.get_metric_statistics(
+                Namespace='AWS/S3',
+                MetricName=statistic,
+                Dimensions=[
+                    {
+                        'Name': 'StorageType',
+                        'Value': storage_type
+                    },
+                    {
+                        'Name': 'BucketName',
+                        'Value': bucket_name
+                    }
+                ],
+                Period=86400,
+                StartTime=datetime.utcnow() - timedelta(days=days),
+                EndTime=datetime.utcnow(),
+                Statistics=[
+                    'Average'
+                ]
+            )
+            stat_value = obj_stats['Datapoints'][0]['Average'] if obj_stats['Datapoints'] else 'NO_DATA'
+
+            return stat_value
+
+        except Exception as e:
+            self.log.error(
+                'Could not get bucket statistic for account {} / bucket {} / {}'.format(self.account.account_name,
+                                                                                        bucket_name, e))
+
+        finally:
+            del cw
+
     # endregion

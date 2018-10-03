@@ -24,14 +24,21 @@ setuptools.setup(
             'view_ebs_volume_list = cinq_collector_aws.views.ebs_volumes:EBSVolumeList',
             'view_ebs_volume_get = cinq_collector_aws.views.ebs_volumes:EBSVolumeGet',
             'view_vpc_list = cinq_collector_aws.views.vpcs:VPCList',
-            'view_vpc_get = cinq_collector_aws.views.vpcs:VPCGet'
+            'view_vpc_get = cinq_collector_aws.views.vpcs:VPCGet',
+            'view_s3_list = cinq_collector_aws.views.s3:S3List',
+            'view_s3_get = cinq_collector_aws.views.s3:S3Get',
+            'view_elb_list = cinq_collector_aws.views.elbs:ELBList',
+            'view_elb_get = cinq_collector_aws.views.elbs:ELBGet'
+        ],
+        'cloud_inquisitor.plugins.types': [
+            'type_elb = cinq_collector_aws.resources:ELB'
         ]
     },
 
     packages=setuptools.find_packages(),
     setup_requires=['setuptools_scm'],
     install_requires=[
-        'cloud_inquisitor~=2.0.0',
+        'cloud_inquisitor~=2.0',
         'boto3~=1.4',
         'python-dateutil~=2.6.0',
         'Flask~=0.12.2',
