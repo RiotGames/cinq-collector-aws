@@ -81,6 +81,10 @@ class AWSAccountCollector(BaseCollector):
                 try:
                     lifecycle_rules = data.Lifecycle().rules
 
+                    for rule in lifecycle_rules:
+                        if rule['ID'] == 'cloudInquisitor':
+                            continue
+
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
                         lifecycle_rules = None
@@ -128,6 +132,7 @@ class AWSAccountCollector(BaseCollector):
 
                 except Exception as e:
                     self.log.error('Could not retrieve bucket statistics / {}'.format(e))
+                    metrics = {}
 
                 properties = {
                     'acl': acl,
