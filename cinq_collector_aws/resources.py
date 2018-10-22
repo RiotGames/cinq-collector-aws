@@ -86,7 +86,11 @@ class ELB(BaseResource):
             'canonical_hosted_zone_name',
             data['CanonicalHostedZoneName']
         )
-        updated |= self.set_property('vpc_id', data['VPCId'])
+        # Apparently you can get an ELB that doesn't have a parent VPC
+        if 'VPCId' in data:
+            updated |= self.set_property('vpc_id', data['VPCId'])
+        else:
+            updated |= self.set_property('vpc_id', 'None')
 
         # Instances
         # ELBs list instances as [{'InstanceId': <instance_id>}, ...] Sigh.
