@@ -71,25 +71,6 @@ class AWSAccountCollector(BaseCollector):
                     bucket_region = 'unavailable'
 
                 try:
-                    acl = data.Acl().grants
-
-                except ClientError as e:
-                    acl = 'Unavailable'
-                    if e.response['Error']['Code'] != 'AccessDenied':
-                        self.log.error('There was a problem collecting acl information for bucket {} on account {}'
-                                       .format(data.name, self.account))
-                try:
-                    lifecycle_rules = data.Lifecycle().rules
-
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
-                        lifecycle_rules = None
-                    else:
-                        self.log.error('There was a problem collecting lifecycle rules for bucket {} on account {}'
-                                       .format(data.name, self.account))
-                        lifecycle_rules = 'Unavailable'
-
-                try:
                     bucket_policy = data.Policy().policy
 
                 except ClientError as e:
@@ -98,7 +79,7 @@ class AWSAccountCollector(BaseCollector):
                     else:
                         self.log.error('There was a problem collecting bucket policy for bucket {} on account {}, {}'
                                        .format(data.name, self.account, e.response))
-                        bucket_policy = 'Unavailable'
+                        bucket_policy = 'cinq cant poll'
 
                 try:
                     website_enabled = 'Enabled' if data.Website().index_document else 'Disabled'
@@ -109,7 +90,7 @@ class AWSAccountCollector(BaseCollector):
                     else:
                         self.log.error('There was a problem collecting website config for bucket {} on account {}'
                                        .format(data.name, self.account))
-                        website_enabled = 'Unavailable'
+                        website_enabled = 'cinq cant poll'
 
                 try:
                     tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
@@ -128,12 +109,11 @@ class AWSAccountCollector(BaseCollector):
 
                 except Exception as e:
                     self.log.error('Could not retrieve bucket statistics / {}'.format(e))
+                    metrics = {}
 
                 properties = {
-                    'acl': acl,
                     'bucket_policy': bucket_policy,
                     'creation_date': data.creation_date,
-                    'lifecycle_config': lifecycle_rules,
                     'location': bucket_region,
                     'website_enabled': website_enabled,
                     'metrics': metrics,
@@ -155,6 +135,7 @@ class AWSAccountCollector(BaseCollector):
                         data.name,
                         account_id=self.account.account_id,
                         properties=properties,
+                        location=bucket_region,
                         tags=tags
                     )
                     self.log.debug('Added new S3Bucket {}/{}'.format(
@@ -175,7 +156,9 @@ class AWSAccountCollector(BaseCollector):
                     ))
                 db.session.commit()
 
-            except:
+            except Exception as e:
+                self.log.error(
+                    'Could not update the current S3Bucket list for account {}/{}'.format(self.account.account_name, e))
                 db.session.rollback()
 
         finally:
