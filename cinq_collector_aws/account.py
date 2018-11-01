@@ -79,7 +79,7 @@ class AWSAccountCollector(BaseCollector):
                     else:
                         self.log.error('There was a problem collecting bucket policy for bucket {} on account {}, {}'
                                        .format(data.name, self.account, e.response))
-                        bucket_policy = 'cinq cant poll'
+                        bucket_policy = 'cinq cannot poll'
 
                 try:
                     website_enabled = 'Enabled' if data.Website().index_document else 'Disabled'
@@ -90,7 +90,7 @@ class AWSAccountCollector(BaseCollector):
                     else:
                         self.log.error('There was a problem collecting website config for bucket {} on account {}'
                                        .format(data.name, self.account))
-                        website_enabled = 'cinq cant poll'
+                        website_enabled = 'cinq cannot poll'
 
                 try:
                     tags = {t['Key']: t['Value'] for t in data.Tagging().tag_set}
@@ -109,7 +109,7 @@ class AWSAccountCollector(BaseCollector):
 
                 except Exception as e:
                     self.log.error('Could not retrieve bucket statistics / {}'.format(e))
-                    metrics = {}
+                    metrics = {'found': False}
 
                 properties = {
                     'bucket_policy': bucket_policy,
