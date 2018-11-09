@@ -557,8 +557,8 @@ class AWSRegionCollector(BaseCollector):
                         'num_instances': len(
                             [instance['InstanceId'] for instance in data['Instances']]
                         ),
-                        'vpc_id': data['VPCId'],
-                        'state': 'not_reported',
+                        'vpc_id': (data['VPCId'] if (data['VPCId'] and 'VPCId' in data) else 'no vpc'),
+                        'state': 'not_reported'
                     }
                     if 'CanonicalHostedZoneName' in data:
                         properties['canonical_hosted_zone_name'] = data['CanonicalHostedZoneName']
