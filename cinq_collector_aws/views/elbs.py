@@ -5,7 +5,11 @@ from cloud_inquisitor.plugins import BaseView
 from cloud_inquisitor.utils import MenuItem
 from cloud_inquisitor.wrappers import check_auth, rollback
 from cinq_collector_aws.resources import ELB
+from cloud_inquisitor.json_utils import InquisitorJSONEncoder
 
+from flask import Response
+from base64 import b64encode
+import json
 
 class ELBList(BaseView):
     URLS = ['/api/v1/elb']
@@ -87,3 +91,44 @@ class ELBGet(BaseView):
             },
             HTTP.OK
         )
+
+
+class ELBExport(BaseView):
+    URLS = ['/api/v1/elb/export']
+
+    @rollback
+    @check_auth(ROLE_USER)
+    def get(self):
+        self.reqparse.add_argument('page', type=int, default=1)
+        self.reqparse.add_argument('count', type=int, default=100, choices=[25, 50, 100])
+        self.reqparse.add_argument('numInstances', type=int, default=None)
+        self.reqparse.add_argument('fileFormat', type=str, default='json', choices=['json', 'xlsx'])
+
+        args = self.reqparse.parse_args()
+        query = {
+            'limit': 99999,
+            'page': 1,
+            'properties': {}
+        }
+
+        total, elbs = ELB.search(**query)
+        elbs = [x.to_json() for x in elbs]
+        elb_count = len(elbs)
+
+        output = {
+            'message': None,
+            'elbCount': total,
+            'elbs': elbs
+        }
+
+        response = Response(
+            response=b64encode(
+                bytes(
+                    json.dumps(output, indent=4, cls=InquisitorJSONEncoder),
+                    'utf-8'
+                )
+            )
+        )
+        response.content_type = 'application/octet-stream'
+        response.status_code = HTTP.OK
+        return response

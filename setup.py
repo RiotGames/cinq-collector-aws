@@ -28,7 +28,8 @@ setuptools.setup(
             'view_s3_list = cinq_collector_aws.views.s3:S3List',
             'view_s3_get = cinq_collector_aws.views.s3:S3Get',
             'view_elb_list = cinq_collector_aws.views.elbs:ELBList',
-            'view_elb_get = cinq_collector_aws.views.elbs:ELBGet'
+            'view_elb_get = cinq_collector_aws.views.elbs:ELBGet',
+            'view_elb_export = cinq_collector_aws.views.elbs:ELBExport'
         ],
         'cloud_inquisitor.plugins.types': [
             'type_elb = cinq_collector_aws.resources:ELB'
