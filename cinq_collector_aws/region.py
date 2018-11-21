@@ -477,7 +477,7 @@ class AWSRegionCollector(BaseCollector):
                         location=self.region,
                         properties=properties,
                         tags=tags
-                        )
+                    )
             db.session.commit()
 
             # Removal of VPCs
@@ -548,6 +548,9 @@ class AWSRegionCollector(BaseCollector):
                             tags = {}
                     else:
                         tags = {}
+
+                    vpc_data = (data['VPCId'] if ('VPCId' in data and data['VPCId']) else 'no vpc')
+
                     properties = {
                         'lb_name': data['LoadBalancerName'],
                         'dns_name': data['DNSName'],
@@ -557,7 +560,7 @@ class AWSRegionCollector(BaseCollector):
                         'num_instances': len(
                             [instance['InstanceId'] for instance in data['Instances']]
                         ),
-                        'vpc_id': (data['VPCId'] if (data['VPCId'] and 'VPCId' in data) else 'no vpc'),
+                        'vpc_id': vpc_data,
                         'state': 'not_reported'
                     }
                     if 'CanonicalHostedZoneName' in data:
@@ -596,10 +599,10 @@ class AWSRegionCollector(BaseCollector):
             for elb_identifier in elb_keys_from_db - elb_keys_from_api:
                 db.session.delete(elbs_from_db[elb_identifier].resource)
                 self.log.info('Deleted ELB {}/{}/{}'.format(
-                        self.account.account_name,
-                        self.region,
-                        elb_identifier
-                    )
+                    self.account.account_name,
+                    self.region,
+                    elb_identifier
+                )
                 )
             db.session.commit()
 
